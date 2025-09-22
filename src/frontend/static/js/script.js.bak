@@ -1,0 +1,438 @@
+// AgriVision Frontend JavaScript
+
+// Global variables
+let currentUser = null;
+let currentCropData = null;
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', function() {
+    initializeApp();
+    setupEventListeners();
+    checkUserSession();
+});
+
+// Initialize application
+function initializeApp() {
+    // Smooth scrolling for navigation links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+
+    // Add fade-in animation to sections
+    const sections = document.querySelectorAll('section');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('fade-in-up');
+            }
+        });
+    });
+
+    sections.forEach(section => {
+        observer.observe(section);
+    });
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    // Crop recommendation form
+    document.getElementById('cropForm').addEventListener('submit', handleCropRecommendation);
+    
+    // Sample data button
+    document.getElementById('fillSampleData').addEventListener('click', fillSampleData);
+    
+    // Weather form
+    document.getElementById('weatherForm').addEventListener('submit', handleWeatherRequest);
+    
+    // Login form
+    document.getElementById('loginSubmitBtn').addEventListener('click', handleLogin);
+    
+    // Login button
+    document.getElementById('loginBtn').addEventListener('click', showLoginModal);
+}
+
+// Handle crop recommendation
+async function handleCropRecommendation(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('cropSubmitBtn');
+    const originalText = submitBtn.innerHTML;
+    
+    try {
+        // Show loading state
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analyzing...';
+        submitBtn.disabled = true;
+        
+        // Get form data
+        const formData = new FormData(e.target);
+        const data = {
+            N: parseFloat(formData.get('N')),
+            P: parseFloat(formData.get('P')),
+            K: parseFloat(formData.get('K')),
+            temperature: parseFloat(formData.get('temperature')),
+            humidity: parseFloat(formData.get('humidity')),
+            ph: parseFloat(formData.get('ph')),
+            rainfall: parseFloat(formData.get('rainfall'))
+        };
+        
+        // Make API request
+        const response = await fetch('/api/predict/crop', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            displayCropResults(result);
+            currentCropData = data; // Store for fertilizer recommendation
+        } else {
+            showError('Crop Recommendation', result.error);
+        }
+        
+    } catch (error) {
+        showError('Crop Recommendation', 'Failed to get crop recommendation. Please try again.');
+        console.error('Error:', error);
+    } finally {
+        // Reset button state
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+// Display crop results
+function displayCropResults(result) {
+    const resultsDiv = document.getElementById('cropResults');
+    const resultsBody = document.getElementById('cropResultsBody');
+    
+    let html = '<div class="row">';
+    
+    result.top_3_crops.forEach((crop, index) => {
+        const isRecommended = index === 0;
+        const badgeClass = isRecommended ? 'bg-success' : 'bg-secondary';
+        const cardClass = isRecommended ? 'border-success' : '';
+        
+        html += `
+            <div class="col-md-4 mb-3">
+                <div class="card crop-card h-100 ${cardClass}" onclick="getFertilizerRecommendation('${crop.crop}')" style="cursor: pointer;">
+                    <div class="card-body text-center">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="card-title mb-0">${crop.crop.charAt(0).toUpperCase() + crop.crop.slice(1)}</h6>
+                            <span class="badge ${badgeClass}">${isRecommended ? 'Recommended' : 'Alternative'}</span>
+                        </div>
+                        <div class="probability-badge">
+                            ${(crop.probability * 100).toFixed(1)}% Match
+                        </div>
+                        <small class="text-muted mt-2 d-block">Click for fertilizer info</small>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    
+    resultsBody.innerHTML = html;
+    resultsDiv.style.display = 'block';
+    
+    // Scroll to results
+    resultsDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Get fertilizer recommendation
+async function getFertilizerRecommendation(crop) {
+    if (!currentCropData) {
+        showError('Fertilizer Recommendation', 'Please get a crop recommendation first.');
+        return;
+    }
+    
+    try {
+        const data = {
+            crop: crop,
+            N: currentCropData.N,
+            P: currentCropData.P,
+            K: currentCropData.K
+        };
+        
+        const response = await fetch('/api/predict/fertilizer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            displayFertilizerResults(crop, result.data);
+        } else {
+            showError('Fertilizer Recommendation', result.error);
+        }
+        
+    } catch (error) {
+        showError('Fertilizer Recommendation', 'Failed to get fertilizer recommendation.');
+        console.error('Error:', error);
+    }
+}
+
+// Display fertilizer results
+function displayFertilizerResults(crop, data) {
+    const resultsDiv = document.getElementById('fertilizerResults');
+    
+    let html = `
+        <div class="card fertilizer-card">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-flask me-2"></i>Fertilizer Recommendation for ${crop.charAt(0).toUpperCase() + crop.slice(1)}
+                </h5>
+            </div>
+            <div class="card-body">
+    `;
+    
+    if (data.error) {
+        html += `<div class="alert alert-danger">${data.error}</div>`;
+    } else if (data.message) {
+        html += `<div class="alert alert-success">${data.message}</div>`;
+    } else {
+        html += `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Nutrient Deficiency</h6>
+                    <p class="mb-2"><strong>Type:</strong> ${data.type}</p>
+                    <p class="mb-2"><strong>Deficiency:</strong> ${data.deficiency} units</p>
+                </div>
+                <div class="col-md-6">
+                    <h6>Recommendation</h6>
+                    <p class="mb-2">${data.recommendation}</p>
+                    <span class="fertilizer-type">${data.fertilizer_type}</span>
+                </div>
+            </div>
+        `;
+    }
+    
+    html += `
+            </div>
+        </div>
+    `;
+    
+    resultsDiv.innerHTML = html;
+    
+    // Scroll to fertilizer section
+    document.getElementById('fertilizer').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Handle weather request
+async function handleWeatherRequest(e) {
+    e.preventDefault();
+    
+    const city = document.getElementById('city').value;
+    const submitBtn = document.getElementById('weatherSubmitBtn');
+    const originalText = submitBtn.innerHTML;
+    
+    try {
+        // Show loading state
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Loading...';
+        submitBtn.disabled = true;
+        
+        const response = await fetch('/api/weather', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ city: city })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            displayWeatherResults(result.data);
+        } else {
+            showError('Weather Information', result.error);
+        }
+        
+    } catch (error) {
+        showError('Weather Information', 'Failed to get weather data. Please try again.');
+        console.error('Error:', error);
+    } finally {
+        // Reset button state
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+// Display weather results
+function displayWeatherResults(data) {
+    const resultsDiv = document.getElementById('weatherResults');
+    
+    if (data.error) {
+        resultsDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>${data.error}
+            </div>
+        `;
+    } else {
+        const weatherIcon = getWeatherIcon(data.description);
+        
+        resultsDiv.innerHTML = `
+            <div class="card weather-card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-4 text-center">
+                            <i class="fas ${weatherIcon} weather-icon"></i>
+                            <h5 class="mt-2">${data.city}, ${data.country}</h5>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="row">
+                                <div class="col-4">
+                                    <h6>Temperature</h6>
+                                    <h4 class="text-info">${data.temperature}°C</h4>
+                                </div>
+                                <div class="col-4">
+                                    <h6>Humidity</h6>
+                                    <h4 class="text-info">${data.humidity}%</h4>
+                                </div>
+                                <div class="col-4">
+                                    <h6>Condition</h6>
+                                    <p class="text-capitalize">${data.description}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    resultsDiv.style.display = 'block';
+}
+
+// Get weather icon based on description
+function getWeatherIcon(description) {
+    const desc = description.toLowerCase();
+    if (desc.includes('sun') || desc.includes('clear')) return 'fa-sun';
+    if (desc.includes('cloud')) return 'fa-cloud';
+    if (desc.includes('rain')) return 'fa-cloud-rain';
+    if (desc.includes('storm')) return 'fa-bolt';
+    if (desc.includes('snow')) return 'fa-snowflake';
+    if (desc.includes('fog') || desc.includes('mist')) return 'fa-smog';
+    return 'fa-cloud-sun';
+}
+
+// Fill sample data
+function fillSampleData() {
+    document.getElementById('N').value = '90';
+    document.getElementById('P').value = '40';
+    document.getElementById('K').value = '40';
+    document.getElementById('temperature').value = '20.5';
+    document.getElementById('humidity').value = '80';
+    document.getElementById('ph').value = '6.5';
+    document.getElementById('rainfall').value = '200';
+}
+
+// Show login modal
+function showLoginModal() {
+    const modal = new bootstrap.Modal(document.getElementById('loginModal'));
+    modal.show();
+}
+
+// Handle login
+async function handleLogin() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const role = document.getElementById('role').value;
+    
+    if (!username || !password || !role) {
+        showError('Login', 'Please fill in all fields.');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            currentUser = result;
+            updateUIForUser();
+            bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
+            showSuccess('Login', `Welcome, ${result.user}!`);
+        } else {
+            showError('Login', result.error);
+        }
+        
+    } catch (error) {
+        showError('Login', 'Login failed. Please try again.');
+        console.error('Error:', error);
+    }
+}
+
+// Check user session
+async function checkUserSession() {
+    try {
+        const response = await fetch('/api/user');
+        const result = await response.json();
+        
+        if (result.success) {
+            currentUser = result;
+            updateUIForUser();
+        }
+    } catch (error) {
+        console.log('No active session');
+    }
+}
+
+// Update UI for logged in user
+function updateUIForUser() {
+    if (currentUser) {
+        const loginBtn = document.getElementById('loginBtn');
+        loginBtn.innerHTML = `<i class="fas fa-user me-2"></i>${currentUser.user} (${currentUser.role})`;
+        loginBtn.onclick = handleLogout;
+    }
+}
+
+// Handle logout
+async function handleLogout() {
+    try {
+        await fetch('/api/logout', { method: 'POST' });
+        currentUser = null;
+        location.reload();
+    } catch (error) {
+        console.error('Logout error:', error);
+    }
+}
+
+// Show error message
+function showError(title, message) {
+    // Create a simple alert for now
+    alert(`${title}: ${message}`);
+}
+
+// Show success message
+function showSuccess(title, message) {
+    // Create a simple alert for now
+    alert(`${title}: ${message}`);
+}
+
+// Utility function to format numbers
+function formatNumber(num, decimals = 2) {
+    return parseFloat(num).toFixed(decimals);
+}

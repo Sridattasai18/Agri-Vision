@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriVision - Smart Agriculture Platform</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success fixed-top" id="mainNav">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#home">
+                <i class="fas fa-seedling me-2"></i>AgriVision
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#home">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#crop-recommendation">Crop Recommendation</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#weather">Weather</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#chatbot">Chatbot</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn btn-outline-light ms-2" id="logoutBtn">
+                            <i class="fas fa-sign-out-alt me-2"></i>Logout
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Home Section -->
+    <section id="home" class="hero-section">
+        <div class="container">
+            <div class="row align-items-center min-vh-100">
+                <div class="col-lg-8" style="padding-left: 70px;">
+                    <h1 class="display-4 fw-bold text-white mb-4" style="text-align: left;">
+                        Smart Agriculture for Small Farmers
+                    </h1>
+                    <p class="lead text-white mb-4" style="text-align: left;">
+                        Get AI-powered crop recommendations, fertilizer suggestions, and weather insights to maximize your farm's potential.
+                    </p>
+                    <div class="d-flex gap-3 flex-row" style="text-align: left;">
+                        <a href="#crop-recommendation" class="btn btn-light btn-lg get-started-btn smooth-scroll">
+                            <i class="fas fa-seedling me-2"></i>Get Started
+                        </a>
+                        <a href="#about" class="btn btn-outline-light btn-lg learn-more-btn smooth-scroll">
+                            <i class="fas fa-info-circle me-2"></i>Learn More
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Crop Recommendation Section -->
+    <section id="crop-recommendation" class="py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2 class="text-center mb-5">
+                        <i class="fas fa-seedling text-success me-2"></i>Crop Recommendation
+                    </h2>
+                    
+                    <div class="card shadow-lg">
+                        <div class="card-body p-4">
+                            <form id="cropForm">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="N" class="form-label">Nitrogen (N) - ppm</label>
+                                        <input type="number" class="form-control" id="N" name="N" required min="0" max="200">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="P" class="form-label">Phosphorus (P) - ppm</label>
+                                        <input type="number" class="form-control" id="P" name="P" required min="0" max="200">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="K" class="form-label">Potassium (K) - ppm</label>
+                                        <input type="number" class="form-control" id="K" name="K" required min="0" max="200">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="temperature" class="form-label">Temperature (°C)</label>
+                                        <input type="number" class="form-control" id="temperature" name="temperature" required min="-10" max="50" step="0.1">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="humidity" class="form-label">Humidity (%)</label>
+                                        <input type="number" class="form-control" id="humidity" name="humidity" required min="0" max="100">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="ph" class="form-label">pH Level</label>
+                                        <input type="number" class="form-control" id="ph" name="ph" required min="0" max="14" step="0.1">
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="rainfall" class="form-label">Rainfall (mm)</label>
+                                        <input type="number" class="form-control" id="rainfall" name="rainfall" required min="0" max="1000">
+                                    </div>
+                                </div>
+                                <div class="text-center mt-4">
+                                    <button type="submit" class="btn btn-success btn-lg" id="cropSubmitBtn">
+                                        <i class="fas fa-search me-2"></i>Get Crop Recommendation
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-lg ms-2" id="fillSampleData">
+                                        <i class="fas fa-flask me-2"></i>Fill Sample Data
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Results -->
+                    <div id="cropResults" class="mt-4" style="display: none;">
+                        <div class="card shadow">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Recommended Crops</h5>
+                            </div>
+                            <div class="card-body" id="cropResultsBody">
+                                <!-- Results will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Fertilizer Recommendation Section -->
+    <section id="fertilizer" class="py-5 bg-light">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2 class="text-center mb-5">
+                        <i class="fas fa-flask text-warning me-2"></i>Fertilizer Recommendation
+                    </h2>
+                    
+                    <div class="card shadow-lg">
+                        <div class="card-body p-4">
+                            <p class="text-muted text-center mb-4">
+                                Select a recommended crop to get specific fertilizer recommendations
+                            </p>
+                            <div id="fertilizerResults" class="text-center">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Please get a crop recommendation first, then click on a crop to see fertilizer suggestions.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Weather Section -->
+    <section id="weather" class="py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2 class="text-center mb-5">
+                        <i class="fas fa-cloud-sun text-info me-2"></i>7-Day Weather Forecast
+                    </h2>
+                    
+                    <div class="card shadow-lg">
+                        <div class="card-body p-4">
+                            <form id="weatherForm">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <label for="city" class="form-label">Enter City/Place</label>
+                                        <input type="text" class="form-control" id="city" name="city" placeholder="e.g., Mumbai, Delhi, Bangalore" required>
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end">
+                                        <button type="submit" class="btn btn-info btn-lg w-100" id="weatherSubmitBtn">
+                                            <i class="fas fa-search me-2"></i>Get Forecast
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                            
+                            <div id="weatherResults" class="mt-4" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Upcoming Features Section -->
+    <section id="features" class="py-5 bg-light">
+        <div class="container">
+            <h2 class="text-center mb-5"><i class="fas fa-cogs text-primary me-2"></i>Upcoming Features</h2>
+            <div class="row g-4 justify-content-center">
+                <!-- Disease Detection -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="card coming-soon-card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-bug display-5 text-danger mb-3"></i>
+                            <h5 class="card-title">Plant Disease Detection</h5>
+                            <p class="card-text text-muted small">Upload plant images to get AI-powered disease diagnosis and treatment suggestions.</p>
+                            <span class="badge bg-warning text-dark mt-auto">Coming Soon</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Crop Price Tracker -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="card coming-soon-card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-chart-line display-5 text-success mb-3"></i>
+                            <h5 class="card-title">Crop Price Tracker</h5>
+                            <p class="card-text text-muted small">Get real-time crop prices from local markets to make better selling decisions.</p>
+                            <span class="badge bg-warning text-dark mt-auto">Coming Soon</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Farmer Schemes -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="card coming-soon-card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-landmark display-5 text-primary mb-3"></i>
+                            <h5 class="card-title">Farmer Schemes</h5>
+                            <p class="card-text text-muted small">Discover government schemes, subsidies, and financial aid programs available to you.</p>
+                            <span class="badge bg-warning text-dark mt-auto">Coming Soon</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Smart Farmer Chatbot Section -->
+    <section id="chatbot" class="py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-10 mx-auto">
+                    <h2 class="text-center mb-5">
+                        <i class="fas fa-robot text-primary me-2"></i>Smart Farmer AI Assistant
+                    </h2>
+                    
+                    <div class="card shadow-lg">
+                        <div class="card-body p-4">
+                            <div class="text-center mb-4">
+                                <i class="fas fa-seedling display-1 text-success mb-3"></i>
+                                <h4>Smart Farmer - Your AI Agricultural Expert</h4>
+                                <p class="text-muted">Get personalized farming advice, crop recommendations, and expert guidance</p>
+                            </div>
+                            
+                            <div class="chatbot-container">
+                                <div class="chat-header bg-success text-white p-3 rounded-top">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-robot me-2"></i>
+                                        <span class="fw-bold">Smart Farmer Assistant</span>
+                                        <div class="ms-auto">
+                                            <span class="badge bg-light text-success">Online</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="chat-messages" id="chatMessages">
+                                    <div class="message bot-message">
+                                        <div class="message-avatar">
+                                            <i class="fas fa-robot"></i>
+                                        </div>
+                                        <div class="message-content">
+                                            <div class="message-header">
+                                                <strong>Smart Farmer</strong>
+                                                <small class="text-muted ms-2">Just now</small>
+                                            </div>
+                                            <div class="message-text">
+                                                Hello! I'm Smart Farmer, your AI agricultural assistant. I can help you with:
+                                                <ul class="mt-2 mb-0">
+                                                    <li>Crop recommendations and planning</li>
+                                                    <li>Fertilizer and soil management</li>
+                                                    <li>Weather-based farming advice</li>
+                                                    <li>Pest and disease identification</li>
+                                                    <li>Market insights and pricing</li>
+                                                </ul>
+                                                How can I assist you today?
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="chat-input bg-light p-3 rounded-bottom">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="chatInput" 
+                                               placeholder="Ask me about farming, crops, weather, or any agricultural question...">
+                                        <button class="btn btn-success" id="sendChatBtn">
+                                            <i class="fas fa-paper-plane"></i>
+                                        </button>
+                                    </div>
+                                    <div class="chat-suggestions mt-2" id="chatSuggestions">
+                                        <!-- Suggestion buttons will be injected here by script.js -->
+                                    </div>
+                                    <div class="mt-2">
+                                        <small class="text-muted">
+                                            <i class="fas fa-lightbulb me-1"></i>
+                                            Try asking: "What crops should I plant this season?" or "How do I improve soil fertility?"
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-4">
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-seedling text-success display-6 mb-3"></i>
+                                            <h6 class="card-title">Crop Planning</h6>
+                                            <p class="card-text small">Get personalized crop recommendations based on your soil, climate, and preferences.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-flask text-warning display-6 mb-3"></i>
+                                            <h6 class="card-title">Fertilizer Guide</h6>
+                                            <p class="card-text small">Learn about proper fertilizer usage, timing, and soil nutrient management.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-cloud-sun text-info display-6 mb-3"></i>
+                                            <h6 class="card-title">Weather Insights</h6>
+                                            <p class="card-text small">Get weather-based farming advice and seasonal planning recommendations.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-10 mx-auto">
+                    <h2 class="text-center mb-5">
+                        <i class="fas fa-info-circle text-primary me-2"></i>About AgriVision
+                    </h2>
+                    
+                    <div class="card shadow-lg">
+                        <div class="card-body p-4">
+                            <p class="lead mb-3">AgriVision is an AI-powered platform designed to empower farmers with smart agricultural insights. Our goal is to make farming more productive, sustainable, and profitable by providing:</p>
+                            <ul>
+                                <li>Accurate <strong>crop recommendations</strong> based on soil and weather.</li>
+                                <li>Smart <strong>fertilizer suggestions</strong> to optimize yield.</li>
+                                <li>Weekly <strong>weather forecasts</strong> for better planning.</li>
+                                <li>Upcoming features like <strong>disease detection</strong>, <strong>crop pricing insights</strong>, and <strong>government scheme updates</strong>.</li>
+                            </ul>
+                            <p class="mb-0">We believe in combining technology with agriculture to help farmers make informed decisions and secure their livelihoods.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-5">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <h5 class="mb-3"><i class="fas fa-seedling me-2"></i>AgriVision</h5>
+                    <p class="mb-0">Empowering farmers with smart agriculture technology.</p>
+                </div>
+                <div class="col-md-6">
+                    <h5 class="mb-3"><i class="fas fa-comment-dots me-2"></i>Feedback</h5>
+                    <form id="feedbackForm" class="row g-2">
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" id="fb_name" placeholder="Your Name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="email" class="form-control" id="fb_email" placeholder="Your Email" required>
+                        </div>
+                        <div class="col-12">
+                            <textarea class="form-control" id="fb_message" rows="3" placeholder="Your feedback..." required></textarea>
+                        </div>
+                        <div class="col-12 text-md-end">
+                            <button type="submit" class="btn btn-success"><i class="fas fa-paper-plane me-2"></i>Submit</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-12 text-center">
+                    <p class="mb-0">&copy; 2025 AgriVision. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

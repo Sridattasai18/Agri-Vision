@@ -1,0 +1,8 @@
+# Instructions for web crawlers
+User-agent: *
+Allow: /
+
+# Disallow crawling of API endpoints and backend-related paths
+Disallow: /api/
+Disallow: /login
+Disallow: /signup

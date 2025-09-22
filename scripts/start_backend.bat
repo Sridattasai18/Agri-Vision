@@ -1,0 +1,6 @@
+@echo off
+echo Starting Crop Recommendation Backend...
+cd backend
+call venv\Scripts\activate.bat
+python app.py
+pause
