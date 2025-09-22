@@ -380,13 +380,19 @@ weather_api = WeatherAPIWrapper()
 # The chatbot's internal logic for fertilizer is a mock, but this makes it extensible.
 app = integrate_chatbot_with_flask(app, crop_model, features, fertilizer_df, weather_api)
 
-# Initialize the database
-init_db()
-
-
 # ----------------------------
 # Run the app
 # ----------------------------
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    # This block is for local development only
+    try:
+        init_db() # Initialize DB when running locally
+        app.logger.info("Database initialized successfully for local development.")
+        port = int(os.environ.get('PORT', 5000))
+        app.run(host='0.0.0.0', port=port, debug=True)
+    except Exception as e:
+        app.logger.error(f"Failed to start the application: {e}", exc_info=True)
+else:
+    # This block runs in production (e.g., when Gunicorn imports the app)
+    init_db()
+    app.logger.info("Database initialized successfully for production.")

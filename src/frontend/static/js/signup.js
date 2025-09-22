@@ -87,8 +87,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear previous errors
         hideMessages();
         
-        let isValid = true;
-
         if (!data.firstName || !data.lastName || !data.email || !data.username || !data.password || !data.confirmPassword || !data.role) {
             showError('Please fill in all required fields.');
             return false;
@@ -109,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return false;
         }
         
-        return isValid;
+        return true;
     }
     
     function validatePassword() {
@@ -120,18 +118,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const strength = getPasswordStrength(password);
         updatePasswordStrength(strength);
         
-        // Check if passwords match
-        if (confirmPassword && password !== confirmPassword) {
-            confirmPasswordInput.classList.add('is-invalid');
-        } else {
-            confirmPasswordInput.classList.remove('is-invalid');
-        }
+        // Also validate the match in case the confirm password field was already filled
+        validatePasswordMatch();
     }
     
     function validatePasswordMatch() {
         const password = passwordInput.value;
         const confirmPassword = confirmPasswordInput.value;
         
+        // Only show invalid state if the confirm password field has text
         if (confirmPassword && password !== confirmPassword) {
             confirmPasswordInput.classList.add('is-invalid');
         } else {
