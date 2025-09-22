@@ -1,7 +1,3 @@
-Got it 🚀 — here’s your **AgriVision README.md**, cleaned, polished, and structured for clarity and professional use. I also fixed duplicate filenames (`crop_model (1).joblib` → `crop_model.joblib`, etc.) and ensured all sections flow nicely.
-
----
-
 # 🌱 AgriVision - Smart Agriculture Platform
 
 AgriVision is a **comprehensive AI-powered web application** designed for small and marginal farmers.
