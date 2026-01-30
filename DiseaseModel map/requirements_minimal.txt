@@ -1,0 +1,16 @@
+# Minimal requirements for plant disease detection feature
+# Add these to your existing requirements.txt
+
+# Deep Learning
+torch==1.8.1+cpu
+torchvision==0.9.1+cpu
+
+# Image Processing
+Pillow==8.2.0
+
+# Data Processing
+numpy==1.20.2
+pandas==1.2.4
+
+# Note: Flask and other web framework dependencies 
+# should already be in your main project

@@ -1,16 +1,97 @@
-# Environment variables
+# ===========================
+# Environment & Secrets
+# ===========================
 .env
+.env.local
+*.env
 
+# ===========================
 # Python
+# ===========================
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
+.Python
 venv/
+env/
+ENV/
+*.egg
 *.egg-info/
 dist/
 build/
+develop-eggs/
+.installed.cfg
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
 
-# IDE files
+# ===========================
+# Database & Data
+# ===========================
+*.db
+*.sqlite
+*.sqlite3
+src/data/feedback.db
+src/data/uploads/*
+!src/data/uploads/.gitkeep
+
+# ===========================
+# ML Models (optional - uncomment if models are large)
+# ===========================
+*.pt
+*.pth
+# *.joblib
+# *.pkl
+# *.h5
+
+# ===========================
+# IDE & Editors
+# ===========================
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# ===========================
+# OS Files
+# ===========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ===========================
+# Logs & Testing
+# ===========================
+*.log
+logs/
+*.coverage
+.pytest_cache/
+.tox/
+htmlcov/
+.coverage.*
+
+# ===========================
+# Deployment
+# ===========================
+.vercel
+.netlify
+.railway
+
+# ===========================
+# Temporary Files
+# ===========================
+*.tmp
+*.bak
+*.swp
+.cache/

@@ -1,3 +1,9 @@
+import warnings
+# Suppress FutureWarning for google.generativeai deprecation
+# TODO: Migrate to google.genai package in future updates
+# See: https://github.com/google-gemini/deprecated-generative-ai-python
+warnings.filterwarnings('ignore', category=FutureWarning, module='google.generativeai')
+
 import google.generativeai as genai
 import json
 import re
@@ -122,7 +128,7 @@ class ChatContext:
 class AgriVisionChatbot:
     def __init__(self, crop_model, features, fertilizer_db, weather_api):
         """Initialize chatbot with existing AgriVision components"""
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        self.model = genai.GenerativeModel('gemini-flash-latest')
         self.crop_model = crop_model
         self.fertilizer_db = fertilizer_db
         self.features = features

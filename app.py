@@ -10,6 +10,26 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# Validate required environment variables
+required_env_vars = ['GEMINI_API_KEY', 'OPENWEATHER_API_KEY']
+missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+
+if missing_vars:
+    print("\n" + "="*60, file=sys.stderr)
+    print("❌ ERROR: Missing Required Environment Variables", file=sys.stderr)
+    print("="*60, file=sys.stderr)
+    print(f"\nThe following environment variables are not set:", file=sys.stderr)
+    for var in missing_vars:
+        print(f"  - {var}", file=sys.stderr)
+    print("\n📝 To fix this:", file=sys.stderr)
+    print("  1. Copy .env.example to .env", file=sys.stderr)
+    print("  2. Add your actual API keys to .env", file=sys.stderr)
+    print("\n🔑 Get API keys from:", file=sys.stderr)
+    print("  - Gemini API: https://makersuite.google.com/app/apikey", file=sys.stderr)
+    print("  - OpenWeather: https://openweathermap.org/api", file=sys.stderr)
+    print("="*60 + "\n", file=sys.stderr)
+    sys.exit(1)
+
 # Add src directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 

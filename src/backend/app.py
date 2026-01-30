@@ -1,6 +1,10 @@
 # AgriVision Backend
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from flask_cors import CORS
+import warnings
+# Suppress scikit-learn version mismatch warnings
+# Model trained on 1.6.1 works fine with 1.5.x - 1.7.x
+warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
 import joblib
 import pandas as pd
 import numpy as np
@@ -34,17 +38,41 @@ project_root = os.path.dirname(current_dir)
 DB_PATH = os.path.join(project_root, 'data', 'feedback.db')
 
 # Crop recommendation model
-model_path = os.path.join(project_root, 'models', 'crop_model (1).joblib')
+model_path = os.path.join(project_root, 'models', 'crop_model.joblib')
 crop_model = joblib.load(model_path)
 
 # Load features
-features_path = os.path.join(project_root, 'models', 'features (1).json')
+features_path = os.path.join(project_root, 'models', 'features.json')
 with open(features_path, 'r') as f:
     features = json.load(f)
 
 # Fertilizer CSV
-fertilizer_path = os.path.join(project_root, 'data', 'fertilizer (2).csv')
+fertilizer_path = os.path.join(project_root, 'data', 'fertilizer.csv')
 fertilizer_df = pd.read_csv(fertilizer_path)
+
+# ----------------------------
+# Plant Disease Detection
+# ----------------------------
+disease_detector = None
+try:
+    from src.models.plant_disease.disease_service import init_detector, get_detector
+    disease_model_path = os.path.join(project_root, 'models', 'plant_disease', 'plant_disease_model_1_latest.pt')
+    disease_info_path = os.path.join(project_root, 'models', 'plant_disease', 'disease_info.csv')
+    supplement_info_path = os.path.join(project_root, 'models', 'plant_disease', 'supplement_info.csv')
+    
+    # Only initialize if model file exists
+    if os.path.exists(disease_model_path):
+        init_detector(
+            model_path=disease_model_path,
+            disease_info_path=disease_info_path,
+            supplement_info_path=supplement_info_path
+        )
+        disease_detector = get_detector()
+        logging.info("Plant disease detection model loaded successfully")
+    else:
+        logging.warning(f"Disease model not found at {disease_model_path}. Disease detection feature will be unavailable.")
+except Exception as e:
+    logging.warning(f"Could not load disease detection model: {e}. Feature will be unavailable.")
 
 # ----------------------------
 # Helper functions
@@ -225,14 +253,6 @@ def weather_forecast():
         app.logger.error(f"Error in /api/weather/forecast: {e}", exc_info=True)
         return jsonify({'success': False, 'error': 'An internal error occurred while fetching the forecast.'}), 500
 
-@app.route('/api/predict/disease', methods=['POST'])
-def predict_disease():
-    return jsonify({
-        'success': True,
-        'message': 'Plant Disease Detection feature is coming soon!',
-        'status': 'under_development'
-    })
-
 @app.route('/api/signup', methods=['POST'])
 def signup():
     try:
@@ -367,10 +387,103 @@ def submit_feedback():
         conn.commit()
         conn.close()
 
-        return jsonify({'success': True, 'message': 'Thank you for your feedback!'})
+        return jsonify({'success': True, 'message': 'Thank you for your feedback!'}), 200
     except Exception as e:
         app.logger.error(f"Error in /api/feedback: {e}", exc_info=True)
         return jsonify({'success': False, 'error': 'An internal error occurred while submitting feedback.'}), 500
+
+# ----------------------------
+# Plant Disease Detection Routes
+# ----------------------------
+UPLOAD_FOLDER = os.path.join(project_root, 'data', 'uploads')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB max
+
+def allowed_file(filename):
+    """Check if file extension is allowed"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/api/predict/disease', methods=['POST'])
+def predict_plant_disease():
+    """Predict plant disease from uploaded image"""
+    if not disease_detector:
+        return jsonify({
+            'success': False,
+            'error': 'Disease detection feature is not available. Model file not found.'
+        }), 503
+    
+    if 'image' not in request.files:
+        return jsonify({'success': False, 'error': 'No image file provided'}), 400
+    
+    file = request.files['image']
+    
+    if file.filename == '':
+        return jsonify({'success': False, 'error': 'No file selected'}), 400
+    
+    if not allowed_file(file.filename):
+        return jsonify({
+            'success': False,
+            'error': 'Invalid file type. Allowed: png, jpg, jpeg, gif'
+        }), 400
+    
+    try:
+        from werkzeug.utils import secure_filename
+        # Save file temporarily
+        filename = secure_filename(file.filename)
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        
+        # Get prediction
+        result = disease_detector.predict_from_path(filepath)
+        
+        # Clean up temporary file
+        try:
+            os.remove(filepath)
+        except:
+            pass
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        }), 200
+        
+    except Exception as e:
+        app.logger.error(f"Error in disease prediction: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Prediction failed: {str(e)}'
+        }), 500
+
+@app.route('/api/disease/list', methods=['GET'])
+def get_diseases():
+    """Get list of all detectable diseases"""
+    if not disease_detector:
+        return jsonify({
+            'success': False,
+            'error': 'Disease detection feature is not available'
+        }), 503
+    
+    try:
+        diseases = disease_detector.get_all_diseases()
+        return jsonify({
+            'success': True,
+            'data': diseases,
+            'count': len(diseases)
+        }), 200
+    except Exception as e:
+        app.logger.error(f"Error getting diseases: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/disease/health', methods=['GET'])
+def disease_health():
+    """Health check for disease detection service"""
+    return jsonify({
+        'success': True,
+        'available': disease_detector is not None,
+        'message': 'Disease detection is available' if disease_detector else 'Disease detection model not loaded'
+    }), 200
 
 # ----------------------------
 # Integrate Gemini Chatbot

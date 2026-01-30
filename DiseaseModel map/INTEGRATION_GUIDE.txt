@@ -1,0 +1,609 @@
+================================================================================
+PLANT DISEASE DETECTION - INTEGRATION GUIDE FOR FLASK PROJECTS
+================================================================================
+
+This guide contains everything you need to integrate the plant disease detection
+feature into your existing Flask backend project.
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. Required Files to Copy
+2. Required Dependencies
+3. CNN Model Code (plant_disease_model.py)
+4. Disease Prediction Service (disease_service.py)
+5. Flask Route Integration Example
+6. Setup Instructions
+7. Usage Examples
+8. Important Notes
+
+================================================================================
+1. REQUIRED FILES TO COPY
+================================================================================
+
+From the original project, you need:
+
+ESSENTIAL FILES:
+├── plant_disease_model.py          (CNN model architecture - see section 3)
+├── disease_service.py              (Prediction service - see section 4)
+├── plant_disease_model_1_latest.pt (Pre-trained model weights - DOWNLOAD REQUIRED)
+├── disease_info.csv                (Disease information database)
+└── supplement_info.csv             (Treatment recommendations)
+
+DOWNLOAD MODEL FILE:
+The pre-trained model file must be downloaded from:
+https://drive.google.com/drive/folders/1ewJWAiduGuld_9oGSrTuLumg9y62qS6A?usp=share_link
+
+File name: plant_disease_model_1_latest.pt
+Size: ~100MB
+
+================================================================================
+2. REQUIRED DEPENDENCIES
+================================================================================
+
+Add these to your existing requirements.txt:
+
+torch==1.8.1+cpu
+torchvision==0.9.1+cpu
+Pillow==8.2.0
+numpy==1.20.2
+pandas==1.2.4
+
+Note: If you need GPU support, replace torch==1.8.1+cpu with torch==1.8.1
+
+================================================================================
+3. CNN MODEL CODE (plant_disease_model.py)
+================================================================================
+
+Create a new file: plant_disease_model.py
+
+"""
+Plant Disease Detection CNN Model
+Classifies plant leaf images into 39 disease categories
+"""
+
+import torch.nn as nn
+
+class PlantDiseaseCNN(nn.Module):
+    """
+    Convolutional Neural Network for plant disease classification
+    Input: RGB images (224x224)
+    Output: 39 disease classes
+    """
+    
+    def __init__(self, num_classes=39):
+        super(PlantDiseaseCNN, self).__init__()
+        
+        self.conv_layers = nn.Sequential(
+            # Convolutional Block 1
+            nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm2d(32),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm2d(32),
+            nn.MaxPool2d(2),
+            
+            # Convolutional Block 2
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm2d(64),
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm2d(64),
+            nn.MaxPool2d(2),
+            
+            # Convolutional Block 3
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm2d(128),
+            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm2d(128),
+            nn.MaxPool2d(2),
+            
+            # Convolutional Block 4
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm2d(256),
+            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm2d(256),
+            nn.MaxPool2d(2),
+        )
+
+        self.dense_layers = nn.Sequential(
+            nn.Dropout(0.4),
+            nn.Linear(50176, 1024),
+            nn.ReLU(),
+            nn.Dropout(0.4),
+            nn.Linear(1024, num_classes),
+        )
+
+    def forward(self, X):
+        out = self.conv_layers(X)
+        out = out.view(-1, 50176)  # Flatten
+        out = self.dense_layers(out)
+        return out
+
+
+# Disease class mapping (index to disease name)
+DISEASE_CLASSES = {
+    0: 'Apple___Apple_scab',
+    1: 'Apple___Black_rot',
+    2: 'Apple___Cedar_apple_rust',
+    3: 'Apple___healthy',
+    4: 'Background_without_leaves',
+    5: 'Blueberry___healthy',
+    6: 'Cherry___Powdery_mildew',
+    7: 'Cherry___healthy',
+    8: 'Corn___Cercospora_leaf_spot Gray_leaf_spot',
+    9: 'Corn___Common_rust',
+    10: 'Corn___Northern_Leaf_Blight',
+    11: 'Corn___healthy',
+    12: 'Grape___Black_rot',
+    13: 'Grape___Esca_(Black_Measles)',
+    14: 'Grape___Leaf_blight_(Isariopsis_Leaf_Spot)',
+    15: 'Grape___healthy',
+    16: 'Orange___Haunglongbing_(Citrus_greening)',
+    17: 'Peach___Bacterial_spot',
+    18: 'Peach___healthy',
+    19: 'Pepper,_bell___Bacterial_spot',
+    20: 'Pepper,_bell___healthy',
+    21: 'Potato___Early_blight',
+    22: 'Potato___Late_blight',
+    23: 'Potato___healthy',
+    24: 'Raspberry___healthy',
+    25: 'Soybean___healthy',
+    26: 'Squash___Powdery_mildew',
+    27: 'Strawberry___Leaf_scorch',
+    28: 'Strawberry___healthy',
+    29: 'Tomato___Bacterial_spot',
+    30: 'Tomato___Early_blight',
+    31: 'Tomato___Late_blight',
+    32: 'Tomato___Leaf_Mold',
+    33: 'Tomato___Septoria_leaf_spot',
+    34: 'Tomato___Spider_mites Two-spotted_spider_mite',
+    35: 'Tomato___Target_Spot',
+    36: 'Tomato___Tomato_Yellow_Leaf_Curl_Virus',
+    37: 'Tomato___Tomato_mosaic_virus',
+    38: 'Tomato___healthy'
+}
+
+================================================================================
+4. DISEASE PREDICTION SERVICE (disease_service.py)
+================================================================================
+
+Create a new file: disease_service.py
+
+"""
+Plant Disease Detection Service
+Handles model loading, prediction, and result formatting
+"""
+
+import os
+import torch
+import numpy as np
+import pandas as pd
+from PIL import Image
+import torchvision.transforms.functional as TF
+from plant_disease_model import PlantDiseaseCNN, DISEASE_CLASSES
+
+
+class PlantDiseaseDetector:
+    """
+    Service class for plant disease detection
+    """
+    
+    def __init__(self, model_path, disease_info_path, supplement_info_path):
+        """
+        Initialize the disease detector
+        
+        Args:
+            model_path: Path to the .pt model file
+            disease_info_path: Path to disease_info.csv
+            supplement_info_path: Path to supplement_info.csv
+        """
+        self.model = PlantDiseaseCNN(num_classes=39)
+        self.model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        self.model.eval()
+        
+        # Load disease and supplement information
+        self.disease_info = pd.read_csv(disease_info_path, encoding='cp1252')
+        self.supplement_info = pd.read_csv(supplement_info_path, encoding='cp1252')
+    
+    def predict_from_path(self, image_path):
+        """
+        Predict disease from image file path
+        
+        Args:
+            image_path: Path to the image file
+            
+        Returns:
+            dict: Prediction results with disease info
+        """
+        image = Image.open(image_path)
+        return self._predict(image)
+    
+    def predict_from_file(self, file_object):
+        """
+        Predict disease from uploaded file object
+        
+        Args:
+            file_object: File object from request.files
+            
+        Returns:
+            dict: Prediction results with disease info
+        """
+        image = Image.open(file_object)
+        return self._predict(image)
+    
+    def _predict(self, image):
+        """
+        Internal prediction method
+        
+        Args:
+            image: PIL Image object
+            
+        Returns:
+            dict: Complete prediction results
+        """
+        # Preprocess image
+        image = image.resize((224, 224))
+        input_data = TF.to_tensor(image)
+        input_data = input_data.view((-1, 3, 224, 224))
+        
+        # Make prediction
+        with torch.no_grad():
+            output = self.model(input_data)
+            output = output.detach().numpy()
+            pred_index = np.argmax(output)
+            confidence = float(np.max(output))
+        
+        # Get disease information
+        disease_name = self.disease_info['disease_name'][pred_index]
+        description = self.disease_info['description'][pred_index]
+        prevention_steps = self.disease_info['Possible Steps'][pred_index]
+        image_url = self.disease_info['image_url'][pred_index]
+        
+        # Get supplement information
+        supplement_name = self.supplement_info['supplement name'][pred_index]
+        supplement_image = self.supplement_info['supplement image'][pred_index]
+        supplement_buy_link = self.supplement_info['buy link'][pred_index]
+        
+        return {
+            'prediction_index': int(pred_index),
+            'disease_class': DISEASE_CLASSES[pred_index],
+            'disease_name': disease_name,
+            'description': description,
+            'prevention_steps': prevention_steps,
+            'image_url': image_url,
+            'confidence': confidence,
+            'supplement': {
+                'name': supplement_name,
+                'image': supplement_image,
+                'buy_link': supplement_buy_link
+            }
+        }
+    
+    def get_all_diseases(self):
+        """
+        Get list of all detectable diseases
+        
+        Returns:
+            list: List of disease names
+        """
+        return list(self.disease_info['disease_name'])
+    
+    def get_all_supplements(self):
+        """
+        Get list of all available supplements
+        
+        Returns:
+            list: List of supplement information
+        """
+        return self.supplement_info.to_dict('records')
+
+
+# Global detector instance (initialize once)
+detector = None
+
+def init_detector(model_path, disease_info_path, supplement_info_path):
+    """
+    Initialize the global detector instance
+    Call this once when your Flask app starts
+    """
+    global detector
+    detector = PlantDiseaseDetector(model_path, disease_info_path, supplement_info_path)
+    return detector
+
+def get_detector():
+    """
+    Get the global detector instance
+    """
+    if detector is None:
+        raise RuntimeError("Detector not initialized. Call init_detector() first.")
+    return detector
+
+================================================================================
+5. FLASK ROUTE INTEGRATION EXAMPLE
+================================================================================
+
+Add these routes to your existing Flask application:
+
+"""
+Example Flask routes for plant disease detection
+Add these to your existing Flask app
+"""
+
+from flask import request, jsonify
+from werkzeug.utils import secure_filename
+import os
+from disease_service import get_detector
+
+# Configure upload folder
+UPLOAD_FOLDER = 'uploads/plant_images'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+# Route 1: Predict disease from uploaded image
+@app.route('/api/plant-disease/predict', methods=['POST'])
+def predict_plant_disease():
+    """
+    Endpoint to predict plant disease from uploaded image
+    
+    Request: multipart/form-data with 'image' file
+    Response: JSON with prediction results
+    """
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image file provided'}), 400
+    
+    file = request.files['image']
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    if file and allowed_file(file.filename):
+        try:
+            # Save file temporarily
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            file.save(filepath)
+            
+            # Get prediction
+            detector = get_detector()
+            result = detector.predict_from_path(filepath)
+            
+            # Optional: Delete temporary file
+            # os.remove(filepath)
+            
+            return jsonify({
+                'success': True,
+                'data': result
+            }), 200
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    return jsonify({'error': 'Invalid file type'}), 400
+
+
+# Route 2: Get all detectable diseases
+@app.route('/api/plant-disease/diseases', methods=['GET'])
+def get_all_diseases():
+    """
+    Endpoint to get list of all detectable diseases
+    """
+    try:
+        detector = get_detector()
+        diseases = detector.get_all_diseases()
+        return jsonify({
+            'success': True,
+            'data': diseases,
+            'count': len(diseases)
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# Route 3: Get all supplements
+@app.route('/api/plant-disease/supplements', methods=['GET'])
+def get_all_supplements():
+    """
+    Endpoint to get list of all available supplements
+    """
+    try:
+        detector = get_detector()
+        supplements = detector.get_all_supplements()
+        return jsonify({
+            'success': True,
+            'data': supplements,
+            'count': len(supplements)
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# Initialize detector when app starts
+# Add this to your app initialization code:
+"""
+from disease_service import init_detector
+
+# Initialize the disease detector
+init_detector(
+    model_path='path/to/plant_disease_model_1_latest.pt',
+    disease_info_path='path/to/disease_info.csv',
+    supplement_info_path='path/to/supplement_info.csv'
+)
+"""
+
+================================================================================
+6. SETUP INSTRUCTIONS
+================================================================================
+
+Step 1: Create a directory structure in your project
+-------------------------------------------------------
+your_project/
+├── models/
+│   └── plant_disease/
+│       ├── plant_disease_model.py
+│       ├── disease_service.py
+│       ├── plant_disease_model_1_latest.pt  (DOWNLOAD THIS)
+│       ├── disease_info.csv
+│       └── supplement_info.csv
+└── uploads/
+    └── plant_images/
+
+
+Step 2: Copy required files
+-------------------------------------------------------
+1. Copy CNN.py content to plant_disease_model.py (see section 3)
+2. Create disease_service.py (see section 4)
+3. Download model file from Google Drive link
+4. Copy disease_info.csv from original project
+5. Copy supplement_info.csv from original project
+
+
+Step 3: Install dependencies
+-------------------------------------------------------
+pip install torch==1.8.1+cpu torchvision==0.9.1+cpu Pillow==8.2.0 numpy==1.20.2 pandas==1.2.4
+
+
+Step 4: Initialize in your Flask app
+-------------------------------------------------------
+Add to your main Flask app file (e.g., app.py or __init__.py):
+
+from models.plant_disease.disease_service import init_detector
+
+# After creating your Flask app
+app = Flask(__name__)
+
+# Initialize disease detector
+init_detector(
+    model_path='models/plant_disease/plant_disease_model_1_latest.pt',
+    disease_info_path='models/plant_disease/disease_info.csv',
+    supplement_info_path='models/plant_disease/supplement_info.csv'
+)
+
+
+Step 5: Add routes
+-------------------------------------------------------
+Copy the route examples from section 5 to your Flask app
+
+
+Step 6: Test the integration
+-------------------------------------------------------
+Use curl or Postman to test:
+
+curl -X POST -F "image=@test_leaf.jpg" http://localhost:5000/api/plant-disease/predict
+
+================================================================================
+7. USAGE EXAMPLES
+================================================================================
+
+Example 1: Simple prediction
+-------------------------------------------------------
+from disease_service import get_detector
+
+detector = get_detector()
+result = detector.predict_from_path('path/to/leaf_image.jpg')
+
+print(f"Disease: {result['disease_name']}")
+print(f"Description: {result['description']}")
+print(f"Prevention: {result['prevention_steps']}")
+
+
+Example 2: Prediction from uploaded file
+-------------------------------------------------------
+@app.route('/upload', methods=['POST'])
+def upload_and_predict():
+    file = request.files['image']
+    detector = get_detector()
+    result = detector.predict_from_file(file)
+    return jsonify(result)
+
+
+Example 3: Get disease list
+-------------------------------------------------------
+detector = get_detector()
+all_diseases = detector.get_all_diseases()
+print(f"Can detect {len(all_diseases)} diseases")
+
+
+Example 4: API Response Format
+-------------------------------------------------------
+{
+  "success": true,
+  "data": {
+    "prediction_index": 29,
+    "disease_class": "Tomato___Bacterial_spot",
+    "disease_name": "Tomato Bacterial Spot",
+    "description": "Bacterial spot is caused by...",
+    "prevention_steps": "Use disease-free seeds...",
+    "image_url": "https://example.com/image.jpg",
+    "confidence": 0.95,
+    "supplement": {
+      "name": "Copper Fungicide",
+      "image": "https://example.com/product.jpg",
+      "buy_link": "https://example.com/buy"
+    }
+  }
+}
+
+================================================================================
+8. IMPORTANT NOTES
+================================================================================
+
+Performance Considerations:
+---------------------------
+- Model loading takes 2-3 seconds on first initialization
+- Each prediction takes ~100-200ms on CPU
+- Consider using GPU for faster inference in production
+- Cache the model instance (don't reload for each request)
+
+File Size:
+----------
+- Model file: ~100MB
+- Keep this in mind for deployment and version control
+- Consider using Git LFS or external storage
+
+Security:
+---------
+- Validate uploaded file types
+- Limit file size (recommend max 10MB)
+- Sanitize filenames using secure_filename()
+- Consider virus scanning for production
+
+Error Handling:
+---------------
+- Handle missing model file gracefully
+- Validate image format before prediction
+- Return meaningful error messages to clients
+
+Customization:
+--------------
+- You can modify the CNN architecture in plant_disease_model.py
+- Update disease_info.csv to change disease descriptions
+- Update supplement_info.csv to change product recommendations
+- Retrain the model with your own dataset if needed
+
+Production Deployment:
+----------------------
+- Use gunicorn or uwsgi for production server
+- Consider using Redis for caching predictions
+- Implement rate limiting on prediction endpoints
+- Monitor model performance and accuracy
+
+================================================================================
+END OF INTEGRATION GUIDE
+================================================================================
+
+For questions or issues, refer to the original project:
+https://github.com/[original-repo-link]
+
+Model training details and dataset information:
+https://medium.com/analytics-vidhya/plant-disease-detection-using-convolutional-neural-networks-and-pytorch-87c00c54c88f
