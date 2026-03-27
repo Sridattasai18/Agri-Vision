@@ -1,3 +1,9 @@
+# Problem Statement:
+Problem Statement Title
+Smart Crop Advisory System for Small and Marginal Farmers
+Problem Description
+A majority of small and marginal farmers in India rely on traditional knowledge, local shopkeepers, or guesswork for crop selection, pest control, and fertilizer usage. They lack access to personalized, real-time advisory services that account for soil type, weather conditions, and crop history.
+This often leads to poor yield, excessive input costs, and environmental degradation due to overuse of chemicals. Language barriers, low digital literacy, and absence of localized tools further limit their access to modern agri-tech resources.
 # 🌱 AgriVision - Smart Agriculture Platform
 
 [![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)
